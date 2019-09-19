@@ -1,4 +1,3 @@
-
 #' Probability Density Function
 #'
 #'
@@ -194,7 +193,11 @@ envelope.BP <- function(model,k=100,link=c("log","identity"),color = "grey50", x
   ggplot(df,aes(r,td))+geom_ribbon(aes(x=xab, ymin=emin.e10, ymax=emax.e20),fill=color,alpha=0.5)  + geom_ribbon(aes(x=xab, ymin=emin.e11, ymax=emax.e21),fill=color,alpha=0.5) + geom_ribbon(aes(x=xab, ymin=emin.e12, ymax=emax.e22),fill=color,alpha=0.5) +scale_fill_gradient(low = "grey25", high = "grey75")+ geom_point() + geom_line(aes(rxb,xb),lty=2)+xlab(xlabel)+ylab(ylabel)+theme(text=element_text(size=30,family=font))
 }
 
-
+#' Diagnostics BP
+#'
+#'
+#'
+#'@export
 diag.BP <- function(model,mu.link = "log",sigma.link = "log",scheme="case.weight")
 {
 
@@ -374,139 +377,14 @@ diag.BP <- function(model,mu.link = "log",sigma.link = "log",scheme="case.weight
                    Ci.theta = Cb.theta)
     return(result)
   }
-
-  # if(scheme=="location")
-  # {
-  #   ############################Location Predictor####################################
-  #   l <- lx
-  #   mu <- model$mu.fv
-  #   sigma <- model$sigma.fv
-  #   eta <- linkfun(mu)
-  #   ai <- mu.eta(eta)
-  #   tau <- sigma_linkfun(sigma)
-  #   bi <- sigma_mu.eta(tau)
-  #   bl <- coef(model,what="mu")[l]
-  #   sxl <- sd(x[,l])
-  #   dmu <- (-1/(2*mu)) + sigma/((y*sigma) + y + (sigma*mu)) +  ((sigma+1)*y)/(4*(mu^2)) - (sigma^2)/(4*y*(sigma+1))
-  #   ai1 <- rep(0,length(mu))
-  #   dmu2 <- 1/(2*mu*mu) - (sigma^2)/(((y*sigma) + y + (sigma*mu))^2) - (y*(sigma+1))/(2*mu*mu*mu)
-  #   ci <- dmu2*(ai^2) + dmu*ai1*ai
-  #   xaux <- matrix(0,nrow=nrow(x),ncol=ncol(x))
-  #   xaux[,l] <- ones(nrow(x),1)
-  #   x0 <- xaux
-  #
-  #   Deltamu <- bl*sxl*crossprod(x,diag(ci)) + sxl*crossprod(x0,diag(dmu*ai))
-  #
-  #   dmusigma <- y/(((y*sigma) + y + (sigma*mu))^2) + y/(4*mu*mu) - (sigma*(sigma+2))/(4*(sigma+1)*(sigma+1)*y)
-  #   mi <- dmusigma*bi*ai
-  #   Deltasigma <- bl*sxl*crossprod(z,diag(mi))
-  #
-  #   Delta <- rbind(Deltamu,Deltasigma)
-  #
-  #
-  #   ###############thetas###########################
-  #   BT<-B(Delta,solve(h0),B3)
-  #   autovmaxthetaPX<- eigen(BT,symmetric=TRUE)$val[1]
-  #   vetorthetaPX<- eigen(BT,symmetric=TRUE)$vec[,1]
-  #   dmaxG.theta<-abs(vetorthetaPX)
-  #   vCithetaPX<-2*abs(diag(BT))
-  #   Cb0<-vCithetaPX
-  #   Cb.theta<-Cb0/sum(Cb0)
-  #
-  #   #################betas##########################
-  #   BM=B(Delta,solve(h0),B1)
-  #   autovmaxbetaPX <- eigen(BM,symmetric=TRUE)$val[1]
-  #   vetorbetaPX <- eigen(BM,symmetric=TRUE)$vec[,1]
-  #   dmaxG.beta <- abs(vetorbetaPX)
-  #   vCibetaPX <- 2*abs(diag(BM))
-  #   Cb1 <- vCibetaPX
-  #   Cb.beta <- Cb1/sum(Cb1)
-  #   ####################alpha#######################
-  #   BD=B(Delta,solve(h0),B2)
-  #   autovmaxdeltaPX <- eigen(BD,symmetric=TRUE)$val[1]
-  #   vetordeltaPX <- eigen(BD,symmetric=TRUE)$vec[,1]
-  #   dmaxG.alpha <- abs(vetordeltaPX)
-  #   vCideltaPX <- 2*abs(diag(BD))
-  #   Cb2 <- vCideltaPX
-  #   Cb.alpha <- Cb2/sum(Cb2)
-  #
-  #   result <- list(dmax.beta = dmaxG.beta,
-  #                  dmax.alpha = dmaxG.alpha,
-  #                  dmax.theta = dmaxG.theta,
-  #                  Ci.beta = Cb.beta,
-  #                  Ci.alpha = Cb.alpha,
-  #                  Ci.theta = Cb.theta)
-  #   return(result)
-  # }
-  #
-  # if(scheme=="precision")
-  # {
-  #   ############################Precision Predictor####################################
-  #   mu <- model$mu.fv
-  #   sigma <- model$sigma.fv
-  #   eta <- linkfun(mu)
-  #   ai <- mu.eta(eta)
-  #   tau <- sigma_linkfun(sigma)
-  #   bi <- sigma_mu.eta(tau)
-  #   k <- lz
-  #   ak <- coef(model,what="sigma")[k]
-  #   szk <- sd(z[,k])
-  #   dsigma <- (y+ mu)/((sigma*y) + y + (sigma*mu)) - y/(4*mu) - (sigma*(sigma+2)*mu)/(4*(sigma+1)*(sigma+1)*y) + sigma/(2*(sigma+1))
-  #   Deltasigma <- crossprod(z,diag(bi*dsigma))
-  #
-  #   bi1 <- rep(2,length(sigma))
-  #   dsigma2 <- 1/(2*(sigma+1)*(sigma+1)) - ((y+mu)^2)/(((y*sigma) + y + (sigma*mu))^2) - mu/(2*(sigma+1)*(sigma+1)*(sigma+1)*y)
-  #   wi <- dsigma2*(bi^2) + dsigma*bi1*bi
-  #   zaux <- matrix(0,nrow=nrow(z),ncol=ncol(z))
-  #   zaux[,k] <- ones(nrow(z),1)
-  #   z0 <- zaux
-  #
-  #   Deltasigma <- ak*szk*crossprod(z,diag(wi)) + szk*crossprod(z0,diag(dsigma*bi))
-  #
-  #   dmusigma <- y/(((y*sigma) + y + (sigma*mu))^2) + y/(4*mu*mu) - (sigma*(sigma+2))/(4*(sigma+1)*(sigma+1)*y)
-  #   mi <- dmusigma*bi*ai
-  #   Deltamu <- ak*szk*crossprod(x,diag(mi))
-  #
-  #   Delta <- rbind(Deltamu,Deltasigma)
-  #
-  #
-  #   ###############thetas###########################
-  #   BT<-B(Delta,solve(h0),B3)
-  #   autovmaxthetaPZ<- eigen(BT,symmetric=TRUE)$val[1]
-  #   vetorthetaPZ<- eigen(BT,symmetric=TRUE)$vec[,1]
-  #   dmaxG.theta<-abs(vetorthetaPZ)
-  #   vCithetaPZ<-2*abs(diag(BT))
-  #   Cb0<-vCithetaPZ
-  #   Cb.theta<-Cb0/sum(Cb0)
-  #
-  #   #################betas##########################
-  #   BM=B(Delta,solve(h0),B1)
-  #   autovmaxbetaPZ <- eigen(BM,symmetric=TRUE)$val[1]
-  #   vetorbetaPZ <- eigen(BM,symmetric=TRUE)$vec[,1]
-  #   dmaxG.beta <- abs(vetorbetaPZ)
-  #   vCibetaPZ <- 2*abs(diag(BM))
-  #   Cb1 <- vCibetaPZ
-  #   Cb.beta <- Cb1/sum(Cb1)
-  #   ####################alpha#######################
-  #   BD=B(Delta,solve(h0),B2)
-  #   autovmaxdeltaPZ <- eigen(BD,symmetric=TRUE)$val[1]
-  #   vetordeltaPZ <- eigen(BD,symmetric=TRUE)$vec[,1]
-  #   dmaxG.alpha <- abs(vetordeltaPZ)
-  #   vCideltaPZ <- 2*abs(diag(BD))
-  #   Cb2 <- vCideltaPZ
-  #   Cb.alpha <- Cb2/sum(Cb2)
-  #
-  #   result <- list(dmax.beta = dmaxG.beta,
-  #                  dmax.alpha = dmaxG.alpha,
-  #                  dmax.theta = dmaxG.theta,
-  #                  Ci.beta = Cb.beta,
-  #                  Ci.alpha = Cb.alpha,
-  #                  Ci.theta = Cb.theta)
-  #   return(result)
-  # }
-  ############################Joint Predictor####################################
-
 }
+
+#' Envelope GA
+#'
+#'
+#'
+#'@export
+
 
 envelope.GA <- function(model,k=100,link=c("log","identity"),color = "grey50", xlabel = "Theorical Quantile",ylabel = "Empirical Quantile",font="serif")
 {
@@ -581,7 +459,11 @@ envelope.GA <- function(model,k=100,link=c("log","identity"),color = "grey50", x
   ggplot(df,aes(r,td))+geom_ribbon(aes(x=xab, ymin=emin.e10, ymax=emax.e20),fill=color,alpha=0.5)  + geom_ribbon(aes(x=xab, ymin=emin.e11, ymax=emax.e21),fill=color,alpha=0.5) + geom_ribbon(aes(x=xab, ymin=emin.e12, ymax=emax.e22),fill=color,alpha=0.5) +scale_fill_gradient(low = "grey25", high = "grey75")+ geom_point() + geom_line(aes(rxb,xb),lty=2)+xlab(xlabel)+ylab(ylabel)+theme(text=element_text(size=30,family=font))
 }
 
-
+#' Envelope IG
+#'
+#'
+#'
+#'@export
 envelope.IG <- function(model,k=100,link=c("log","identity"),color = "grey50", xlabel = "Theorical Quantile",ylabel = "Empirical Quantile",font="serif")
 {
 
@@ -655,7 +537,11 @@ envelope.IG <- function(model,k=100,link=c("log","identity"),color = "grey50", x
   ggplot(df,aes(r,td))+geom_ribbon(aes(x=xab, ymin=emin.e10, ymax=emax.e20),fill=color,alpha=0.5)  + geom_ribbon(aes(x=xab, ymin=emin.e11, ymax=emax.e21),fill=color,alpha=0.5) + geom_ribbon(aes(x=xab, ymin=emin.e12, ymax=emax.e22),fill=color,alpha=0.5) +scale_fill_gradient(low = "grey25", high = "grey75")+ geom_point() + geom_line(aes(rxb,xb),lty=2)+xlab(xlabel)+ylab(ylabel)+theme(text=element_text(size=30,family=font))
 }
 
-
+#' Envelope BS
+#'
+#'
+#'
+#'@export
 envelope <- function(model, k = 100, precision = c("fixed","varying"), dist = RBS(mu.link = "identity", sigma.link = "identity"),color = "grey50", xlabel = "Theorical quantile",ylabel = "Empirical quantile",font="serif")
 {
   if (precision != "fixed") {
@@ -752,7 +638,11 @@ envelope <- function(model, k = 100, precision = c("fixed","varying"), dist = RB
   }
 }
 
-
+#' gamlss BP
+#'
+#'
+#'
+#'@export
 BP <- function (mu.link = "log", sigma.link = "log")
 {
   mstats <- checklink("mu.link", "Beta Prime", substitute(mu.link), c("log", "identity", "sqrt"))
@@ -831,15 +721,19 @@ BP <- function (mu.link = "log", sigma.link = "log")
 }
 
 
-
+#' GEE BP
+#'
+#'
+#'
+#'@export
 geeBP = function(formula, data, id, tol = 0.001, maxiter = 80, corstr = "independence", linkmu = "log"){
 
   formula = as.formula(formula)
-  X = as.matrix(model.matrix(formula, data = data)) # Matriz de especificação
-  p = ncol(X) # Número de parâmetros
-  y = model.frame(formula, data = data)[,1] # Variável resposta
-  nt = table(id) # Número de repetições
-  n = max(id) # Número de unidades experimentais
+  X = as.matrix(model.matrix(formula, data = data)) 
+  p = ncol(X) 
+  y = model.frame(formula, data = data)[,1] 
+  nt = table(id) 
+  n = max(id) 
   N = nrow(X)
   mod0 = gamlss(formula,family = BP(mu.link = "log"), trace = FALSE, data = data,method = CG())
   beta = mod0$mu.coefficients # Chute inicial para beta
@@ -848,18 +742,16 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 80, corstr = "indepen
     phi = 1
   }
 
-  # Modelo sob suposição de dependência
   cont = 1
   repeat{
     eta = X%*%beta
     if(linkmu == "log"){
-      mu = as.vector(exp(eta)) # mi para a ligação logarítmica
+      mu = as.vector(exp(eta)) 
     }
     if(linkmu == "identity"){
-      mu = as.vector(eta) # mi para a ligação logarítmica
+      mu = as.vector(eta) 
     }
 
-    # Cálculo da função de variância
     vmu = mu^2 + mu
 
     # y estrela
@@ -868,18 +760,16 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 80, corstr = "indepen
     # mi estrela
     mus = digamma(mu*(phi+1))-digamma(mu*(phi+1)+phi+2)
 
-    # Variância de b_ij
     vmus = trigamma(mu*(phi+1))-trigamma(mu*(phi+1)+phi+2)
 
     # Vetor b_i
     u = ys-mus
 
-    #Matrizes utilizadas para o cálculo da equação de estimação
     if(linkmu == "log"){
-      G = diag(as.vector(mu)) # G para a ligação logarítimica
+      G = diag(as.vector(mu)) 
     }
     if(linkmu == "identity"){
-      G = diag(N) # G para a ligação logarítimica
+      G = diag(N) 
     }
     A = diag(as.vector(vmus))
     Lambda = (phi+1)*G%*%A
@@ -921,7 +811,6 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 80, corstr = "indepen
           }
         }
       }
-      # Matriz de correlação AR-1
       Rm = as.matrix(bdiag(R))
     }
     if(corstr == "exchangeable"){
@@ -940,7 +829,6 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 80, corstr = "indepen
         R[[i]] = matrix(alpha,nt[i],nt[i])
         diag(R[[i]]) = 1
       }
-      # Matriz de correlação Uniforme
       Rm = as.matrix(bdiag(R))
     }
     if(corstr == "one-dependent"){
@@ -1095,10 +983,8 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 80, corstr = "indepen
     W = Lambda%*%solve(Omega,tol=1e-150)%*%Lambda
     z = eta + solve(Lambda,tol=1e-150)%*%u
 
-    #Novo valor de beta
     beta1 = solve(t(X)%*%W%*%X,tol=1e-150)%*%(t(X)%*%W%*%z)
 
-    # Verificar se convergiu: beta1 é aproximadamente beta
     dif = abs(beta1-beta)
     if(sum(dif)<=(tol*p)){
       beta = beta1
@@ -1107,7 +993,6 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 80, corstr = "indepen
       break
     }
 
-    # Se não convergir em 50 iterações o algoritmo para
     if(cont == maxiter){
       paste0("Maximum number of iterations reached")
       converg = 0
@@ -1115,38 +1000,28 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 80, corstr = "indepen
     }
     beta = beta1
 
-    # Resíduo de Pearson
     r = (y-mu)*(1/sqrt(vmu))
 
-    # Cálculo do novo phi
     phi = 1/(sum(r^2)/(N-p))
     cont = cont + 1
   }
 
-  # Matriz de sensibilidade considerando a estrutura de independência
   if(corstr == "independence"){
-    # Matriz de sensibilidade
     S = -t(X)%*%W%*%X
     invOmega = solve(Omega)
 
-    # Covariância de beta
     VarBeta = solve(S)%*%t(X)%*%Lambda%*%invOmega%*%A%*%invOmega%*%Lambda%*%X%*%solve(S)
   }
   else
   {
-    # Matriz de sensibilidade
     S = -t(X)%*%W%*%X
     invOmega = solve(Omega)
 
-    # Covariância de beta
     VarBeta = solve(S)%*%t(X)%*%Lambda%*%invOmega%*%u%*%t(u)%*%invOmega%*%Lambda%*%X%*%solve(S)
   }
 
-  # Estimativa do erro padrão de beta
   SEbeta = sqrt(diag(VarBeta))
 
-  # A função retorna na primeira coluna as estimativas de beta e na segunda coluna o erro padrão
-  # respectivo
   fit <- list()
   fit$X = X
   fit$W = W
