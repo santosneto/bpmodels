@@ -4,7 +4,18 @@
 \alias{sim.gee.bp}
 \title{Simulations}
 \usage{
-sim.gee.bp(n = 10, r = 2, phi = 2, REP = 10, alpha = 0.5)
+sim.gee.bp(n=10,r=2,phi=2,REP=10,alpha=0.5)
+}
+\arguments{
+\item{n}{sampling size}
+
+\item{r}{xx}
+
+\item{phi}{xx}
+
+\item{REP}{xx}
+
+\item{alpha}{xx}
 }
 \description{
 Simulations

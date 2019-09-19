@@ -1046,7 +1046,15 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 80, corstr = "indepen
 
 #'Simulations
 #'
+#'@description Simulations 
 #'
+#'@usage sim.gee.bp(n=10,r=2,phi=2,REP=10,alpha=0.5)
+#'
+#'@param n sampling size 
+#'@param r xx
+#'@param phi xx
+#'@param REP xx
+#'@param alpha xx
 #'
 #'@export
 sim.gee.bp <- function(n=10,r=2,phi=2,REP=10,alpha=0.5)
