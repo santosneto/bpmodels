@@ -4,8 +4,8 @@
 \alias{geeBP}
 \title{GEE BP}
 \usage{
-geeBP(formula, data, id, tol = 0.001, maxiter = 80,
-  corstr = "independence", linkmu = "log")
+geeBP(formula, data, id, tol = 0.001, maxiter = 25,
+  corstr = "independence", linkmu = "log", print = FALSE)
 }
 \description{
 GEE BP

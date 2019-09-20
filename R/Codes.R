@@ -93,550 +93,6 @@ qBP <- function(p, mu = 1, sigma = 1, lower.tail = TRUE, log.p = FALSE)
 }
 
 
-#' Residuals
-#'
-#'
-#'
-#'@export
-
-residuals.pearson <- function(model)
-{
-
-  mu <- fit$mu.fv
-  phi <- fit$sigma.fv
-  y <- model$y
-
-  resP <- (sqrt(phi)*(y-mu))/sqrt(mu*(1+mu))
-
-
-  resP
-}
-
-
-
-#' Envelope BP
-#'
-#'
-#'
-#'@export
-
-envelope.BP <- function(model,k=100,link=c("log","identity"),color = "grey50", xlabel = "Theorical Quantile",ylabel = "Empirical Quantile",font="serif")
-{
-
-  n=model$N
-  td  = model$residuals
-  sigma = model$sigma.fv
-  mu = model$mu.fv
-  re <- matrix(0,n,k)
-  mu.link <- model$mu.link
-  sigma.link <- model$sigma.link
-
-  if(length(model$mu.coefficients)==1) x <- model$mu.x else x <- model$mu.x[,-1];
-  if(length(model$sigma.coefficients)==1) z <- model$sigma.x else z <- model$sigma.x[,-1];
-
-  for(i in 1:k)
-  {
-    y1 <- mapply(rBP,1,mu,sigma)
-
-    if(length(model$mu.coefficients)==1) form.x <- y1 ~ x-1 else  form.x <- y1 ~ x;
-    if(length(model$sigma.coefficients)==1) form.z <- y1 ~ z-1 else  form.z <- y1 ~ z;
-
-    conh0 = gamlss.control(trace = FALSE, autostep = FALSE, save = TRUE)
-
-    if(mu.link=="log" & sigma.link == "identity"){
-      model1 <- gamlss(formula=form.x ,sigma.formula=form.z, family=BP(mu.link="log",sigma.link="identity"),method=RS(),control = conh0)
-    } else if(mu.link=="log" & sigma.link == "log"){
-      model1 <- gamlss(formula=form.x ,sigma.formula=form.z, family=BP(mu.link="log",sigma.link="log"),method=RS(),control = conh0)
-    } else if(mu.link=="log" & sigma.link == "sqrt"){
-      model1 <- gamlss(formula=form.x ,sigma.formula=form.z, family=BP(mu.link="log",sigma.link="sqrt"),method=RS(),control = conh0)
-    } else if(mu.link=="identity" & sigma.link == "sqrt"){
-      model1 <- gamlss(formula=form.x ,sigma.formula=form.z, family=BP(mu.link="identity",sigma.link="sqrt"),method=RS(),control = conh0)
-    } else if(mu.link=="identity" & sigma.link == "log"){
-      model1 <- gamlss(formula=form.x ,sigma.formula=form.z, family=BP(mu.link="identity",sigma.link="log"),method=RS(),control = conh0)
-    } else if(mu.link=="identity" & sigma.link == "identity"){
-      model1 <- gamlss(formula=form.x ,sigma.formula=form.z, family=BP(mu.link="identity",sigma.link="identity"),method=RS(),control = conh0)
-    } else if(mu.link=="sqrt" & sigma.link == "sqrt"){
-      model1 <- gamlss(formula=form.x ,sigma.formula=form.z, family=BP(mu.link="sqrt",sigma.link="identity"),method=RS(),control = conh0)
-    } else if(mu.link=="sqrt" & sigma.link == "log"){
-      model1 <- gamlss(formula=form.x ,sigma.formula=form.z, family=BP(mu.link="sqrt",sigma.link="log"),method=RS(),control = conh0)
-    } else{
-      model1 <- gamlss(formula=form.x ,sigma.formula=form.z, family=BP(mu.link="sqrt",sigma.link="identity"),method=RS(),control = conh0)
-    }
-
-    rdf <- model1$residuals
-    re[,i] <- sort(rdf)
-  }
-  e10 <- numeric(n)
-  e20 <- numeric(n)
-  e11 <- numeric(n)
-  e21 <- numeric(n)
-  e12 <- numeric(n)
-  e22 <- numeric(n)
-
-  for(l in 1:n)
-  {
-    eo = sort(re[l,])
-    e10[l] = eo[ceiling(k*0.01)]
-    e20[l] = eo[ceiling(k*(1 - 0.01))]
-    e11[l] = eo[ceiling(k*0.05)]
-    e21[l] = eo[ceiling(k*(1 - 0.05))]
-    e12[l] = eo[ceiling(k*0.1)]
-    e22[l] = eo[ceiling(k*(1 - 0.1))]
-  }
-
-  a <- qqnorm(e10, plot.it = FALSE)$x
-  r <- qqnorm(td, plot.it = FALSE)$x
-  xb = apply(re, 1, mean)
-  rxb <- qqnorm(xb, plot.it = FALSE)$x
-
-  df <- data.frame(r=r,xab=a,emin=cbind(e10,e11,e12),emax=cbind(e20,e21,e22),xb=xb,td=td,rxb=rxb)
-  ggplot(df,aes(r,td))+geom_ribbon(aes(x=xab, ymin=emin.e10, ymax=emax.e20),fill=color,alpha=0.5)  + geom_ribbon(aes(x=xab, ymin=emin.e11, ymax=emax.e21),fill=color,alpha=0.5) + geom_ribbon(aes(x=xab, ymin=emin.e12, ymax=emax.e22),fill=color,alpha=0.5) +scale_fill_gradient(low = "grey25", high = "grey75")+ geom_point() + geom_line(aes(rxb,xb),lty=2)+xlab(xlabel)+ylab(ylabel)+theme(text=element_text(size=30,family=font))
-}
-
-#' Diagnostics BP
-#'
-#'
-#'
-#'@export
-diag.BP <- function(model,mu.link = "log",sigma.link = "log",scheme="case.weight")
-{
-
-  x <- model$mu.x
-  z  <- model$sigma.x
-  y <- model$y
-  p<-ncol(x)
-  q<-ncol(z)
-
-  linkstr <- mu.link
-  linkobj <- make.link(linkstr)
-  linkfun <- linkobj$linkfun
-  linkinv <- linkobj$linkinv
-  mu.eta  <- linkobj$mu.eta
-
-  sigma_linkstr <- sigma.link
-  sigma_linkobj <- make.link(sigma_linkstr)
-  sigma_linkfun <- sigma_linkobj$linkfun
-  sigma_linkinv <- sigma_linkobj$linkinv
-  sigma_mu.eta  <- sigma_linkobj$mu.eta
-
-
-  B=function(Delta,I,M)
-  {
-    B=(t(Delta)%*%(I-M)%*%Delta)
-    return(B)
-  }
-
-  loglik <- function(vP)
-  {
-    betab = vP[1:p]
-    alpha = vP[-(1:p)]
-    eta   = as.vector(x%*%betab)
-    tau   = as.vector(z%*%alpha)
-    mu    = linkinv(eta)
-    sigma = sigma_linkinv(tau)
-
-    a <- mu*(1+sigma)
-    b <- 2 + sigma
-
-    fy <- (a-1)*log(y) - (a+b)*log(1+y) - lbeta(a,b)
-
-    return(sum(fy))
-  }
-
-  muest <- model$mu.coefficients
-  sigmaest <- model$sigma.coefficients
-  x0<- c(muest,sigmaest)
-  h0 <- hessian(loglik,x0)
-
-  Ldelta= h0[(p+1):(p+q),(p+1):(p+q)]
-  Lbeta=h0[1:p,1:p]
-  b11=cbind(matrix(0, p, p), matrix(0, p, q))
-  b12=cbind(matrix(0, q, p), solve(Ldelta))
-  B1= rbind(b11, b12)  #parameter beta
-  b211 =cbind(solve(Lbeta), matrix(0, p, q))
-  b212= cbind(matrix(0, q, p), matrix(0, q, q))
-  B2=rbind(b211,b212)  # parameter delta
-
-  b311 =cbind(matrix(0, p, p), matrix(0, p, q))
-  b312= cbind(matrix(0, q, p), matrix(0, q, q))
-  B3=rbind(b311,b312)  # parameter theta
-
-  if(scheme=="case.weight")
-  {
-    ############################Case Weight####################################
-
-    mu <- model$mu.fv
-    sigma <- model$sigma.fv
-    eta <- linkfun(mu)
-    ai <- mu.eta(eta)
-    a <- mu*(1+sigma)
-    b <- mu*(1+sigma)+sigma+2
-    Phi <-  (1+sigma)
-    yast <- log(y) - log(1+y)
-    muast <- digamma(a) - digamma(b)
-    dldm <- Phi*(yast - muast)
-    Deltamu <- crossprod(x,diag(ai*dldm))
-
-
-    tau <- sigma_linkfun(sigma)
-    bi <- sigma_mu.eta(tau)
-    ystar <- mu*log(y) - (1+mu)*log(1+y)
-    mustar <- mu*digamma(a) - (1+mu)*digamma(b) + digamma(Phi+1)
-    dldd <- ystar - mustar
-
-    Deltasigma <- crossprod(z,diag(bi*dldd))
-
-    Delta <- rbind(Deltamu,Deltasigma)
-
-    ##################theta#########################
-    BT<-B(Delta,solve(h0),B3)
-    autovmaxthetaPC<- eigen(BT,symmetric=TRUE)$val[1]
-    vetorpcthetaPC<- eigen(BT,symmetric=TRUE)$vec[,1]
-    dmaxG.theta<-abs(vetorpcthetaPC)
-    vCithetaPC<-2*abs(diag(BT))
-    Cb0<-vCithetaPC
-    Cb.theta<-Cb0/sum(Cb0)
-    ######################betas########################
-    BM<-B(Delta,solve(h0),B1)
-    autovmaxbetaPC<-eigen(BM,symmetric=TRUE)$val[1]
-    vetorpcbetaPC<-eigen(BM,symmetric=TRUE)$vec[,1]
-    dmaxG.beta<-abs(vetorpcbetaPC)
-    vCibetaPC<-2*abs(diag(BM))
-    Cb1<-vCibetaPC
-    Cb.beta<-Cb1/sum(Cb1)
-    ####################alphas#########################
-    BD<-B(Delta,solve(h0),B2)
-    autovmaxdeltaPC<-eigen(BD,symmetric=TRUE)$val[1]
-    vetordeltaPC<-eigen(BD,symmetric=TRUE)$vec[,1]
-    dmaxG.alpha=abs(vetordeltaPC)
-    vCideltaPC=2*abs(diag(BD))
-    Cb2=vCideltaPC
-    Cb.alpha=Cb2/sum(Cb2)
-
-    result <- list(dmax.beta = dmaxG.beta,
-                   dmax.alpha = dmaxG.alpha,
-                   dmax.theta = dmaxG.theta,
-                   Ci.beta = Cb.beta,
-                   Ci.alpha = Cb.alpha,
-                   Ci.theta = Cb.theta)
-    return(result)
-  }
-
-  if(scheme=="response")
-  {
-    ############################Response####################################
-    mu <- model$mu.fv
-    sigma <- model$sigma.fv
-    eta <- linkfun(mu)
-    ai <- mu.eta(eta)
-    tau <- sigma_linkfun(sigma)
-    bi <- sigma_mu.eta(tau)
-    sy<- sqrt((mu*(1+mu))/sigma)
-    Phi <-  (1+sigma)
-
-    dymu <- Phi*(1/(y*(1+y)))
-    Deltamu <- crossprod(x,diag(ai*dymu*sy))
-    p<-ncol(x)
-    q<-ncol(z)
-    dysigma <- mu*(1/(y*(1+y))) - 1/(1+y)
-    Deltasigma <- crossprod(z,diag(bi*dysigma*sy))
-    Delta <- rbind(Deltamu,Deltasigma)
-
-    ###############thetas###########################
-    BT<-B(Delta,solve(h0),B3)
-    autovmaxthetaPC<- eigen(BT,symmetric=TRUE)$val[1]
-    vetorthetaRP<- eigen(BT,symmetric=TRUE)$vec[,1]
-    dmaxG.theta<-abs(vetorthetaRP)
-    vCithetaRP<-2*abs(diag(BT))
-    Cb0<-vCithetaRP
-    Cb.theta<-Cb0/sum(Cb0)
-
-    #################betas##########################
-    BM=B(Delta,solve(h0),B1)
-    autovmaxbetaRP <- eigen(BM,symmetric=TRUE)$val[1]
-    vetorbetaRP <- eigen(BM,symmetric=TRUE)$vec[,1]
-    dmaxG.beta <- abs(vetorbetaRP)
-    vCibetaRP <- 2*abs(diag(BM))
-    Cb1 <- vCibetaRP
-    Cb.beta <- Cb1/sum(Cb1)
-    ####################alpha#######################
-    BD=B(Delta,solve(h0),B2)
-    autovmaxdeltaRP <- eigen(BD,symmetric=TRUE)$val[1]
-    vetordeltaRP <- eigen(BD,symmetric=TRUE)$vec[,1]
-    dmaxG.alpha <- abs(vetordeltaRP)
-    vCideltaRP <- 2*abs(diag(BD))
-    Cb2 <- vCideltaRP
-    Cb.alpha <- Cb2/sum(Cb2)
-
-
-    result <- list(dmax.beta = dmaxG.beta,
-                   dmax.alpha = dmaxG.alpha,
-                   dmax.theta = dmaxG.theta,
-                   Ci.beta = Cb.beta,
-                   Ci.alpha = Cb.alpha,
-                   Ci.theta = Cb.theta)
-    return(result)
-  }
-}
-
-#' Envelope GA
-#'
-#'
-#'
-#'@export
-
-
-envelope.GA <- function(model,k=100,link=c("log","identity"),color = "grey50", xlabel = "Theorical Quantile",ylabel = "Empirical Quantile",font="serif")
-{
-
-  n=model$N
-  td  = model$residuals
-  sigma = model$sigma.fv
-  mu = model$mu.fv
-  re <- matrix(0,n,k)
-  mu.link <- model$mu.link
-  sigma.link <- model$sigma.link
-
-  if(length(model$mu.coefficients)==1) x <- model$mu.x else x <- model$mu.x[,-1];
-  if(length(model$sigma.coefficients)==1) z <- model$sigma.x else z <- model$sigma.x[,-1];
-
-  for(i in 1:k)
-  {
-    y1 <- mapply(rGA,1,mu,sigma)
-
-    if(length(model$mu.coefficients)==1) form.x <- y1 ~ x-1 else  form.x <- y1 ~ x;
-    if(length(model$sigma.coefficients)==1) form.z <- y1 ~ z-1 else  form.z <- y1 ~ z;
-
-    conh0 = gamlss.control(trace = FALSE, autostep = FALSE, save = TRUE)
-
-    if(mu.link=="log" & sigma.link == "identity"){
-      model1 <- gamlss(formula=form.x ,sigma.formula=form.z, family=GA(mu.link="log",sigma.link="identity"),method=RS(),control = conh0)
-    } else if(mu.link=="log" & sigma.link == "log"){
-      model1 <- gamlss(formula=form.x ,sigma.formula=form.z, family=GA(mu.link="log",sigma.link="log"),method=RS(),control = conh0)
-    } else if(mu.link=="log" & sigma.link == "sqrt"){
-      model1 <- gamlss(formula=form.x ,sigma.formula=form.z, family=GA(mu.link="log",sigma.link="sqrt"),method=RS(),control = conh0)
-    } else if(mu.link=="identity" & sigma.link == "sqrt"){
-      model1 <- gamlss(formula=form.x ,sigma.formula=form.z, family=GA(mu.link="identity",sigma.link="sqrt"),method=RS(),control = conh0)
-    } else if(mu.link=="identity" & sigma.link == "log"){
-      model1 <- gamlss(formula=form.x ,sigma.formula=form.z, family=GA(mu.link="identity",sigma.link="log"),method=RS(),control = conh0)
-    } else if(mu.link=="identity" & sigma.link == "identity"){
-      model1 <- gamlss(formula=form.x ,sigma.formula=form.z, family=GA(mu.link="identity",sigma.link="identity"),method=RS(),control = conh0)
-    } else if(mu.link=="sqrt" & sigma.link == "sqrt"){
-      model1 <- gamlss(formula=form.x ,sigma.formula=form.z, family=GA(mu.link="sqrt",sigma.link="identity"),method=RS(),control = conh0)
-    } else if(mu.link=="sqrt" & sigma.link == "log"){
-      model1 <- gamlss(formula=form.x ,sigma.formula=form.z, family=GA(mu.link="sqrt",sigma.link="log"),method=RS(),control = conh0)
-    } else{
-      model1 <- gamlss(formula=form.x ,sigma.formula=form.z, family=GA(mu.link="sqrt",sigma.link="identity"),method=RS(),control = conh0)
-    }
-
-    rdf <- model1$residuals
-    re[,i] <- sort(rdf)
-  }
-  e10 <- numeric(n)
-  e20 <- numeric(n)
-  e11 <- numeric(n)
-  e21 <- numeric(n)
-  e12 <- numeric(n)
-  e22 <- numeric(n)
-
-  for(l in 1:n)
-  {
-    eo = sort(re[l,])
-    e10[l] = eo[ceiling(k*0.01)]
-    e20[l] = eo[ceiling(k*(1 - 0.01))]
-    e11[l] = eo[ceiling(k*0.05)]
-    e21[l] = eo[ceiling(k*(1 - 0.05))]
-    e12[l] = eo[ceiling(k*0.1)]
-    e22[l] = eo[ceiling(k*(1 - 0.1))]
-  }
-
-  a <- qqnorm(e10, plot.it = FALSE)$x
-  r <- qqnorm(td, plot.it = FALSE)$x
-  xb = apply(re, 1, mean)
-  rxb <- qqnorm(xb, plot.it = FALSE)$x
-
-  df <- data.frame(r=r,xab=a,emin=cbind(e10,e11,e12),emax=cbind(e20,e21,e22),xb=xb,td=td,rxb=rxb)
-  ggplot(df,aes(r,td))+geom_ribbon(aes(x=xab, ymin=emin.e10, ymax=emax.e20),fill=color,alpha=0.5)  + geom_ribbon(aes(x=xab, ymin=emin.e11, ymax=emax.e21),fill=color,alpha=0.5) + geom_ribbon(aes(x=xab, ymin=emin.e12, ymax=emax.e22),fill=color,alpha=0.5) +scale_fill_gradient(low = "grey25", high = "grey75")+ geom_point() + geom_line(aes(rxb,xb),lty=2)+xlab(xlabel)+ylab(ylabel)+theme(text=element_text(size=30,family=font))
-}
-
-#' Envelope IG
-#'
-#'
-#'
-#'@export
-envelope.IG <- function(model,k=100,link=c("log","identity"),color = "grey50", xlabel = "Theorical Quantile",ylabel = "Empirical Quantile",font="serif")
-{
-
-  n=model$N
-  td  = model$residuals
-  sigma = model$sigma.fv
-  mu = model$mu.fv
-  re <- matrix(0,n,k)
-  mu.link <- model$mu.link
-  sigma.link <- model$sigma.link
-
-  if(length(model$mu.coefficients)==1) x <- model$mu.x else x <- model$mu.x[,-1];
-  if(length(model$sigma.coefficients)==1) z <- model$sigma.x else z <- model$sigma.x[,-1];
-
-  for(i in 1:k)
-  {
-    y1 <- mapply(rIG,1,mu,sigma)
-
-    if(length(model$mu.coefficients)==1) form.x <- y1 ~ x-1 else  form.x <- y1 ~ x;
-    if(length(model$sigma.coefficients)==1) form.z <- y1 ~ z-1 else  form.z <- y1 ~ z;
-
-    conh0 = gamlss.control(trace = FALSE, autostep = FALSE, save = TRUE)
-
-    if(mu.link=="log" & sigma.link == "identity"){
-      model1 <- gamlss(formula=form.x ,sigma.formula=form.z, family=IG(mu.link="log",sigma.link="identity"),method=RS(),control = conh0)
-    } else if(mu.link=="log" & sigma.link == "log"){
-      model1 <- gamlss(formula=form.x ,sigma.formula=form.z, family=IG(mu.link="log",sigma.link="log"),method=RS(),control = conh0)
-    } else if(mu.link=="log" & sigma.link == "sqrt"){
-      model1 <- gamlss(formula=form.x ,sigma.formula=form.z, family=IG(mu.link="log",sigma.link="sqrt"),method=RS(),control = conh0)
-    } else if(mu.link=="identity" & sigma.link == "sqrt"){
-      model1 <- gamlss(formula=form.x ,sigma.formula=form.z, family=IG(mu.link="identity",sigma.link="sqrt"),method=RS(),control = conh0)
-    } else if(mu.link=="identity" & sigma.link == "log"){
-      model1 <- gamlss(formula=form.x ,sigma.formula=form.z, family=IG(mu.link="identity",sigma.link="log"),method=RS(),control = conh0)
-    } else if(mu.link=="identity" & sigma.link == "identity"){
-      model1 <- gamlss(formula=form.x ,sigma.formula=form.z, family=IG(mu.link="identity",sigma.link="identity"),method=RS(),control = conh0)
-    } else if(mu.link=="sqrt" & sigma.link == "sqrt"){
-      model1 <- gamlss(formula=form.x ,sigma.formula=form.z, family=IG(mu.link="sqrt",sigma.link="identity"),method=RS(),control = conh0)
-    } else if(mu.link=="sqrt" & sigma.link == "log"){
-      model1 <- gamlss(formula=form.x ,sigma.formula=form.z, family=IG(mu.link="sqrt",sigma.link="log"),method=RS(),control = conh0)
-    } else{
-      model1 <- gamlss(formula=form.x ,sigma.formula=form.z, family=IG(mu.link="sqrt",sigma.link="identity"),method=RS(),control = conh0)
-    }
-
-    rdf <- model1$residuals
-    re[,i] <- sort(rdf)
-  }
-  e10 <- numeric(n)
-  e20 <- numeric(n)
-  e11 <- numeric(n)
-  e21 <- numeric(n)
-  e12 <- numeric(n)
-  e22 <- numeric(n)
-
-  for(l in 1:n)
-  {
-    eo = sort(re[l,])
-    e10[l] = eo[ceiling(k*0.01)]
-    e20[l] = eo[ceiling(k*(1 - 0.01))]
-    e11[l] = eo[ceiling(k*0.05)]
-    e21[l] = eo[ceiling(k*(1 - 0.05))]
-    e12[l] = eo[ceiling(k*0.1)]
-    e22[l] = eo[ceiling(k*(1 - 0.1))]
-  }
-
-  a <- qqnorm(e10, plot.it = FALSE)$x
-  r <- qqnorm(td, plot.it = FALSE)$x
-  xb = apply(re, 1, mean)
-  rxb <- qqnorm(xb, plot.it = FALSE)$x
-
-  df <- data.frame(r=r,xab=a,emin=cbind(e10,e11,e12),emax=cbind(e20,e21,e22),xb=xb,td=td,rxb=rxb)
-  ggplot(df,aes(r,td))+geom_ribbon(aes(x=xab, ymin=emin.e10, ymax=emax.e20),fill=color,alpha=0.5)  + geom_ribbon(aes(x=xab, ymin=emin.e11, ymax=emax.e21),fill=color,alpha=0.5) + geom_ribbon(aes(x=xab, ymin=emin.e12, ymax=emax.e22),fill=color,alpha=0.5) +scale_fill_gradient(low = "grey25", high = "grey75")+ geom_point() + geom_line(aes(rxb,xb),lty=2)+xlab(xlabel)+ylab(ylabel)+theme(text=element_text(size=30,family=font))
-}
-
-#' Envelope BS
-#'
-#'
-#'
-#'@export
-envelope <- function(model, k = 100, precision = c("fixed","varying"), dist = RBS(mu.link = "identity", sigma.link = "identity"),color = "grey50", xlabel = "Theorical quantile",ylabel = "Empirical quantile",font="serif")
-{
-  if (precision != "fixed") {
-    alfa1 <- ceiling(k * alpha)
-    alfa2 <- ceiling(k * (1 - alpha))
-    n <- model$N
-    td <- model$residuals
-    sigma <- model$sigma.fv
-    mu <- model$mu.fv
-    re <- matrix(0, n, k)
-    X <- model$mu.x
-    Z <- model$sigma.x
-    p <- ncol(X)
-    q <- ncol(Z)
-    for (i in 1:k) {
-      y1 <- mapply(rRBS, n = 1, mu = mu, sigma = sigma)
-      nresp <- y1
-      if (p == 1) form <- nresp ~ 0 + X else form <- nresp ~ X[, -1]
-      if (q == 1) form1 <- nresp ~ 0 + Z else form1 <- nresp ~ Z[, -1]
-      conh0 = gamlss.control(trace = FALSE, autostep = FALSE, save = TRUE)
-      model1 <- gamlss(formula = form, sigma.formula = form1, family = dist, method = RS(), control = conh0)
-      rdf <- model1$residuals
-      re[, i] = sort(rdf)
-    }
-    e10 <- numeric(n)
-    e20 <- numeric(n)
-    e11 <- numeric(n)
-    e21 <- numeric(n)
-    e12 <- numeric(n)
-    e22 <- numeric(n)
-    for (l in 1:n) {
-      eo = sort(re[l,])
-      e10[l] = eo[ceiling(k*0.01)]
-      e20[l] = eo[ceiling(k*(1 - 0.01))]
-      e11[l] = eo[ceiling(k*0.05)]
-      e21[l] = eo[ceiling(k*(1 - 0.05))]
-      e12[l] = eo[ceiling(k*0.1)]
-      e22[l] = eo[ceiling(k*(1 - 0.1))]
-    }
-
-
-    a <- qqnorm(e10, plot.it = FALSE)$x
-    r <- qqnorm(td, plot.it = FALSE)$x
-    xb = apply(re, 1, mean)
-    rxb <- qqnorm(xb, plot.it = FALSE)$x
-
-    df <- data.frame(r=r,xab=a,emin=cbind(e10,e11,e12),emax=cbind(e20,e21,e22),xb=xb,td=td,rxb=rxb)
-    ggplot(df,aes(r,td))+geom_ribbon(aes(x=xab, ymin=emin.e10, ymax=emax.e20),fill=color,alpha=0.5)  + geom_ribbon(aes(x=xab, ymin=emin.e11, ymax=emax.e21),fill=color,alpha=0.5) + geom_ribbon(aes(x=xab, ymin=emin.e12, ymax=emax.e22),fill=color,alpha=0.5) +scale_fill_gradient(low = "grey25", high = "grey75")+ geom_point() + geom_line(aes(rxb,xb),lty=2)+xlab(xlabel)+ylab(ylabel)+theme(text=element_text(size=30,family=font))
-  }
-  else {
-
-    n <- model$N
-    td <- model$residuals
-    sigma <- model$sigma.fv[1]
-    mu <- model$mu.fv
-    alpha <- sqrt(2/sigma)
-    bet.a <- (sigma * mu)/(sigma + 1)
-    re <- matrix(0, n, k)
-    X <- model$mu.x
-    p <- ncol(X)
-    mulink <- model$mu.link
-    for (i in 1:k) {
-      y1 <- mapply(rRBS, n = 1, mu = mu, sigma = sigma)
-      nresp <- y1
-      if (p == 1) form <- nresp ~ 0 + X else form <- nresp ~ X[, -1]
-
-      conh0 <- gamlss.control(trace = FALSE, autostep = FALSE, save = TRUE)
-      model1 <- gamlss(formula = form, family = dist, method = RS(), control = conh0)
-      rdf <- model1$residuals
-      re[, i] <- sort(rdf)
-    }
-    e10 <- numeric(n)
-    e20 <- numeric(n)
-    e11 <- numeric(n)
-    e21 <- numeric(n)
-    e12 <- numeric(n)
-    e22 <- numeric(n)
-    for (l in 1:n) {
-      eo = sort(re[l,])
-      e10[l] = eo[ceiling(k*0.01)]
-      e20[l] = eo[ceiling(k*(1 - 0.01))]
-      e11[l] = eo[ceiling(k*0.05)]
-      e21[l] = eo[ceiling(k*(1 - 0.05))]
-      e12[l] = eo[ceiling(k*0.1)]
-      e22[l] = eo[ceiling(k*(1 - 0.1))]
-    }
-    a <- qqnorm(e10, plot.it = FALSE)$x
-    r <- qqnorm(td, plot.it = FALSE)$x
-    xb = apply(re, 1, mean)
-    rxb <- qqnorm(xb, plot.it = FALSE)$x
-
-    df <- data.frame(r=r,xab=a,emin=cbind(e10,e11,e12),emax=cbind(e20,e21,e22),xb=xb,td=td,rxb=rxb)
-    ggplot(df,aes(r,td))+geom_ribbon(aes(x=xab, ymin=emin.e10, ymax=emax.e20),fill=color,alpha=0.5)  + geom_ribbon(aes(x=xab, ymin=emin.e11, ymax=emax.e21),fill=color,alpha=0.5) + geom_ribbon(aes(x=xab, ymin=emin.e12, ymax=emax.e22),fill=color,alpha=0.5) +scale_fill_gradient(low = "grey25", high = "grey75")+ geom_point() + geom_line(aes(rxb,xb),lty=2)+xlab(xlabel)+ylab(ylabel)+theme(text=element_text(size=30,family=font))
-  }
-}
 
 #' gamlss BP
 #'
@@ -726,60 +182,82 @@ BP <- function (mu.link = "log", sigma.link = "log")
 #'
 #'
 #'@export
-geeBP = function(formula, data, id, tol = 0.001, maxiter = 80, corstr = "independence", linkmu = "log"){
-
+geeBP = function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "independence", linkmu = "log", print=FALSE){
+  
+  namescor = c("independence", "unstructured", "exchangeable", "AR-1", "one-dependent",
+               "one-dependent-stat","two-dependent","two-dependent-stat")
+  if(all(namescor != corstr)){
+    stop("the correlation structure is not defined")
+  }
+  nameslink = c("log", "identity")
+  if(all(nameslink != linkmu)){
+    stop("the link function is not defined")
+  }
   formula = as.formula(formula)
-  X = as.matrix(model.matrix(formula, data = data)) 
-  p = ncol(X) 
-  y = model.frame(formula, data = data)[,1] 
-  nt = table(id) 
-  n = max(id) 
+  call <- match.call()
+  X = as.matrix(model.matrix(formula, data = data)) # Matriz de especificação
+  p = ncol(X) # Número de parâmetros
+  y = model.frame(formula, data = data)[,1] # Variável resposta
+  t = table(id) # Número de repetições
+  n = max(id) # Número de unidades experimentais
   N = nrow(X)
-  mod0 = gamlss(formula,family = BP(mu.link = "log"), trace = FALSE, data = data,method = CG())
+  if(linkmu == "log"){
+    mod0 = gamlss(formula,family = BP(mu.link = "log"), trace = FALSE, data = data)
+  }
+  if(linkmu == "identity"){
+    mod0 = gamlss(formula,family = BP(mu.link = "identity"), trace = FALSE, data = data)
+  }
+  if(corstr == "independence"){
+    cat("a gamlss object was returned")
+    return(mod0)
+  }
   beta = mod0$mu.coefficients # Chute inicial para beta
   phi = mod0$sigma.coefficients # Chute inicial para phi
   if(phi<0){
     phi = 1
   }
-
+  
+  # Modelo sob suposição de dependência
   cont = 1
   repeat{
     eta = X%*%beta
     if(linkmu == "log"){
-      mu = as.vector(exp(eta)) 
+      mu = as.vector(exp(eta)) # mi para a ligação logarítmica
     }
     if(linkmu == "identity"){
-      mu = as.vector(eta) 
+      mu = as.vector(eta) # mi para a ligação logarítmica
     }
-
+    # Cálculo da função de variância
     vmu = mu^2 + mu
-
+    
     # y estrela
     ys = log(y/(y+1))
-
+    
     # mi estrela
     mus = digamma(mu*(phi+1))-digamma(mu*(phi+1)+phi+2)
-
+    
+    # Variância de b_ij
     vmus = trigamma(mu*(phi+1))-trigamma(mu*(phi+1)+phi+2)
-
+    
     # Vetor b_i
     u = ys-mus
-
+    
+    #Matrizes utilizadas para o cálculo da equação de estimação
     if(linkmu == "log"){
-      G = diag(as.vector(mu)) 
+      G = diag(as.vector(mu)) # G para a ligação logarítimica
     }
     if(linkmu == "identity"){
-      G = diag(N) 
+      G = diag(1,N,N) # G para a ligação logarítimica
     }
     A = diag(as.vector(vmus))
     Lambda = (phi+1)*G%*%A
-
+    
     uc = split(u,id)
-    scomb = matrix(u,n,nt[1],byrow = TRUE)
+    scomb = matrix(u,n,t[1],byrow = TRUE)
     if(corstr == "unstructured"){
-      R = matrix(0,nt[1],nt[1])
-      for(j in 1:nt[1]){
-        for(l in j:nt[1]){
+      R = matrix(0,t[1],t[1])
+      for(j in 1:t[1]){
+        for(l in j:t[1]){
           num = sum(scomb[,j]*scomb[,l])
           den1 = sqrt(sum(scomb[,j]^2))
           den2 = sqrt(sum(scomb[,l]^2))
@@ -793,7 +271,7 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 80, corstr = "indepen
     if(corstr == "AR-1"){
       cnum = cden1 = cden2 = 0
       for(i in 1:n){
-        for(j in 1:(nt[i]-1)){
+        for(j in 1:(t[i]-1)){
           cnum = cnum + uc[[i]][j]*uc[[i]][j+1]
           cden1 = cden1 + (uc[[i]][j]^2)
           cden2 = cden2 + (uc[[i]][j+1]^2)
@@ -804,21 +282,23 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 80, corstr = "indepen
       diag(Rm) = 1
       R = list(NULL)
       for(i in 1:n){
-        R[[i]] = matrix(0,nt[i],nt[i])
-        for(j in 1:nt[i]){
-          for(l in 1:nt[i]){
+        R[[i]] = matrix(0,t[i],t[i])
+        for(j in 1:t[i]){
+          for(l in 1:t[i]){
             R[[i]][j,l] = alpha^(abs(j-l))
           }
         }
       }
+      # Matriz de correlação AR-1
       Rm = as.matrix(bdiag(R))
+      R=R[[1]]
     }
     if(corstr == "exchangeable"){
       cnum = cden = 0
       for(i in 1:n){
         aux = uc[[i]]%*%t(uc[[i]])
-        cnum = cnum + sum(aux[upper.tri(aux)])*(2/(nt[i]-1))
-        for(j in 1:(nt[i])){
+        cnum = cnum + sum(aux[upper.tri(aux)])*(2/(t[i]-1))
+        for(j in 1:(t[i])){
           cden = cden + (uc[[i]][j]^2)
         }
       }
@@ -826,10 +306,12 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 80, corstr = "indepen
       Rm = matrix(0,N,N)
       R = list(NULL)
       for(i in 1:n){
-        R[[i]] = matrix(alpha,nt[i],nt[i])
+        R[[i]] = matrix(alpha,t[i],t[i])
         diag(R[[i]]) = 1
       }
+      # Matriz de correlação Uniforme
       Rm = as.matrix(bdiag(R))
+      R=R[[1]]
     }
     if(corstr == "one-dependent"){
       alpha = 0
@@ -839,7 +321,7 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 80, corstr = "indepen
           den = den + (scomb[i,j]^2)
         }
       }
-      for(j in 1:(nt[1]-1)){
+      for(j in 1:(t[1]-1)){
         num = 0
         for(i in 1:n){
           num = num + (scomb[i,j]*scomb[i,j+1])
@@ -849,9 +331,9 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 80, corstr = "indepen
       alpha = (N/n)*alpha
       Rm = matrix(0,N,N)
       diag(Rm) = 1
-      R = matrix(0,nt[1],nt[1])
-      for(i in 1:nt[1]){
-        for(j in 1:nt[1]){
+      R = matrix(0,t[1],t[1])
+      for(i in 1:t[1]){
+        for(j in 1:t[1]){
           if(j==(i+1)){
             R[i,j] = alpha[i]
             R[j,i] = R[i,j]
@@ -865,11 +347,11 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 80, corstr = "indepen
       alpha1 = 0
       den = 0
       for(i in 1:n){
-        for(j in 1:nt[1]){
+        for(j in 1:t[1]){
           den = den + (scomb[i,j]^2)
         }
       }
-      for(j in 1:(nt[1]-1)){
+      for(j in 1:(t[1]-1)){
         num = 0
         for(i in 1:n){
           num = num + (scomb[i,j]*scomb[i,j+1])
@@ -878,7 +360,7 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 80, corstr = "indepen
       }
       alpha1 = (N/n)*alpha1
       alpha2 = 0
-      for(j in 1:(nt[1]-2)){
+      for(j in 1:(t[1]-2)){
         num = 0
         for(i in 1:n){
           num = num + (scomb[i,j]*scomb[i,j+2])
@@ -888,9 +370,9 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 80, corstr = "indepen
       alpha2 = (N/n)*alpha2
       Rm = matrix(0,N,N)
       diag(Rm) = 1
-      R = matrix(0,nt[1],nt[1])
-      for(i in 1:nt[1]){
-        for(j in 1:nt[1]){
+      R = matrix(0,t[1],t[1])
+      for(i in 1:t[1]){
+        for(j in 1:t[1]){
           if(j==(i+1)){
             R[i,j] = alpha1[i]
             R[j,i] = R[i,j]
@@ -908,11 +390,11 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 80, corstr = "indepen
       alpha = 0
       den = 0
       for(i in 1:n){
-        for(j in 1:nt[1]){
+        for(j in 1:t[1]){
           den = den + (scomb[i,j]^2)
         }
       }
-      for(j in 1:(nt[1]-1)){
+      for(j in 1:(t[1]-1)){
         num = 0
         for(i in 1:n){
           num = num + (scomb[i,j]*scomb[i,j+1])
@@ -922,11 +404,11 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 80, corstr = "indepen
       alpha = (N/n)*alpha
       Rm = matrix(0,N,N)
       diag(Rm) = 1
-      R = matrix(0,nt[1],nt[1])
-      for(i in 1:nt[1]){
-        for(j in 1:nt[1]){
+      R = matrix(0,t[1],t[1])
+      for(i in 1:t[1]){
+        for(j in 1:t[1]){
           if(j==(i+1)){
-            R[i,j] = sum(alpha)/(nt[1]-1)
+            R[i,j] = sum(alpha)/(t[1]-1)
             R[j,i] = R[i,j]
           }
         }
@@ -938,11 +420,11 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 80, corstr = "indepen
       alpha1 = 0
       den = 0
       for(i in 1:n){
-        for(j in 1:nt[1]){
+        for(j in 1:t[1]){
           den = den + (scomb[i,j]^2)
         }
       }
-      for(j in 1:(nt[1]-1)){
+      for(j in 1:(t[1]-1)){
         num = 0
         for(i in 1:n){
           num = num + (scomb[i,j]*scomb[i,j+1])
@@ -951,7 +433,7 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 80, corstr = "indepen
       }
       alpha1 = (N/n)*alpha1
       alpha2 = 0
-      for(j in 1:(nt[1]-2)){
+      for(j in 1:(t[1]-2)){
         num = 0
         for(i in 1:n){
           num = num + (scomb[i,j]*scomb[i,j+2])
@@ -961,15 +443,15 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 80, corstr = "indepen
       alpha2 = (N/n)*alpha2
       Rm = matrix(0,N,N)
       diag(Rm) = 1
-      R = matrix(0,nt[1],nt[1])
-      for(i in 1:nt[1]){
-        for(j in 1:nt[1]){
+      R = matrix(0,t[1],t[1])
+      for(i in 1:t[1]){
+        for(j in 1:t[1]){
           if(j==(i+1)){
-            R[i,j] = sum(alpha1)/(nt[1]-1)
+            R[i,j] = sum(alpha1)/(t[1]-1)
             R[j,i] = R[i,j]
           }
           if(j == (i+2)){
-            R[i,j] = sum(alpha2)/(nt[1]-1)
+            R[i,j] = sum(alpha2)/(t[1]-1)
             R[j,i] = R[i,j]
           }
         }
@@ -977,71 +459,120 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 80, corstr = "indepen
       diag(R) = 1
       Rm = kronecker(diag(n),R)
     }
-
-
     Omega = sqrt(A)%*%Rm%*%sqrt(A)
-    W = Lambda%*%solve(Omega,tol=1e-150)%*%Lambda
-    z = eta + solve(Lambda,tol=1e-150)%*%u
-
-    beta1 = solve(t(X)%*%W%*%X,tol=1e-150)%*%(t(X)%*%W%*%z)
-
+    W = Lambda%*%solve(Omega)%*%Lambda
+    z = eta + solve(Lambda)%*%u
+    
+    #Novo valor de beta
+    beta1 = solve(t(X)%*%W%*%X)%*%(t(X)%*%W%*%z)
+    
+    # Verificar se convergiu: beta1 é aproximadamente beta
     dif = abs(beta1-beta)
     if(sum(dif)<=(tol*p)){
       beta = beta1
-      paste0("The algorithm converged")
+      if(print == TRUE) cat("The algorithm converged")
       converg = 1
       break
     }
-
+    
+    # Se não convergir em 50 iterações o algoritmo para
     if(cont == maxiter){
-      paste0("Maximum number of iterations reached")
+      if(print == TRUE) cat("Maximum number of iterations reached")
       converg = 0
       break
     }
     beta = beta1
-
+    
+    # Resíduo de Pearson
     r = (y-mu)*(1/sqrt(vmu))
-
+    
+    # Cálculo do novo phi
     phi = 1/(sum(r^2)/(N-p))
     cont = cont + 1
   }
-
-  if(corstr == "independence"){
-    S = -t(X)%*%W%*%X
-    invOmega = solve(Omega)
-
-    VarBeta = solve(S)%*%t(X)%*%Lambda%*%invOmega%*%A%*%invOmega%*%Lambda%*%X%*%solve(S)
-  }
-  else
-  {
-    S = -t(X)%*%W%*%X
-    invOmega = solve(Omega)
-
-    VarBeta = solve(S)%*%t(X)%*%Lambda%*%invOmega%*%u%*%t(u)%*%invOmega%*%Lambda%*%X%*%solve(S)
-  }
-
+  
+  # Matriz de sensibilidade
+  S = -t(X)%*%W%*%X
+  invOmega = solve(Omega)
+  
+  # Covariância de beta
+  VarBeta = solve(S)%*%t(X)%*%Lambda%*%invOmega%*%u%*%t(u)%*%invOmega%*%Lambda%*%X%*%solve(S)
+  
+  # Estimativa do erro padrão de beta
   SEbeta = sqrt(diag(VarBeta))
-
+  
+  # A função retorna na primeira coluna as estimativas de beta e na segunda coluna o erro padrão
+  # respectivo
   fit <- list()
-  fit$X = X
-  fit$W = W
-  fit$Lam = Lambda
-  fit$u = u
-  fit$coef = beta
-  fit$EP = SEbeta
-  fit$rp = r
-  fit$rcov = VarBeta
-  fit$vmu = vmu
-  fit$phi = phi
-  fit$mu = mu
-  fit$A = A
-  fit$G = G
-  fit$R = R
-  fit$Rm = Rm
-  fit$alpha = alpha
-  fit$Omega = Omega
+  attr(fit, "class") <- c("geeBP")
+  fit$title <- "geeBP:  BETA PRIME GENERALIZED ESTIMATING EQUATIONS"
+  fit$model <- list()
+  fit$model$link <- linkmu
+  fit$model$varfun <- "mu(1+mu)"
+  fit$model$corstr <- corstr
+  fit$call <- call
+  fit$formula <- formula
+  fit$nclusters = n
+  fit$clusters = t
+  fit$nobs <- N
+  fit$iterations <- cont
+  fit$coefficients <- beta
+  eta <- as.vector(X %*% fit$coefficients)
+  fit$linear.predictors <- eta
+  mu <- as.vector(mu)
+  fit$fitted.values <- mu
+  fit$residuals <- r
+  fit$family <- "Beta prime"
+  fit$y <- as.vector(y)
+  fit$id <- as.vector(id)
+  fit$max.id <- max(t)
+  fit$working.correlation <- R
+  fit$scale <- phi
+  fit$robust.variance <- VarBeta
+  fit$robust.se = SEbeta
+  if(corstr == "unstructured"){
+    fit$alpha = fit$working.correlation[upper.tri(fit$working.correlation)]
+  }
+  if(corstr == "AR-1"||corstr == "exchangeable"||corstr == "one-dependent"){
+    fit$alpha = alpha
+  }
+  if(corstr == "two-dependent"){
+    fit$alpha = list(diag1 = alpha1, diag2 = alpha2)
+  }
+  if(corstr == "one-dependent-stat"){
+    fit$alpha = R[1,2]
+  }
+  if(corstr == "two-dependent-stat"){
+    fit$alpha = c(R[1,2],R[1,3])
+  }
+  #fit$xnames <- colnames(model.matrix(formula, data = data))
+  #dimnames(fit$robust.variance) <- list(fit$xnames, fit$xnames)
+  #dimnames(fit$naive.variance) <- list(fit$xnames, fit$xnames)
+  fit$comp$X = X
+  fit$comp$W = W
+  fit$comp$u = u
+  fit$comp$Lambda = Lambda
+  fit$comp$vmu = vmu
+  fit$comp$A = A
+  fit$comp$G = G
+  fit$comp$Rm = Rm
+  fit$comp$Omega = Omega
+  # QIC
+  Q = (1/phi)*(y*(log(mu)-log(y))+(y-1)*(log(1+mu)-log(1+y)))
+  psiq = sum(Q)
+  VI = A
+  oi = t(X)%*%Lambda%*%solve(VI)%*%Lambda%*%X
+  QIC = -2*psiq + 2*sum(diag(oi%*%VarBeta))
+  CIC = sum(diag(oi%*%VarBeta))
+  fit$QIC = QIC
+  fit$CIC = CIC
+  devi = -2*phi*Q
+  D = sum(devi)
+  phia = D/n
+  fit$EQIC = (1/phia)*D + sum(log(2*pi*phia*(diag(A)+1/6))) + 2*CIC
   return(fit)
 }
+
 
 
 #'Simulations
@@ -1143,18 +674,18 @@ sim.gee.bp <- function(n=10,r=2,phi=2,REP=10,alpha=0.5)
         s = s - 1
         next
       }
-      betaar1[s,] = resul1$coef
-      sear1[s,] = resul1$EP
-      betaex[s,] = resul2$coef
-      seex[s,] = resul2$EP
-      betaun[s,] = resul3$coef
-      seun[s,] = resul3$EP
+      betaar1[s,] = resul1$coefficients
+      sear1[s,] = resul1$robust.se
+      betaex[s,] = resul2$coefficients
+      seex[s,] = resul2$robust.se
+      betaun[s,] = resul3$coefficients
+      seun[s,] = resul3$robust.se
       betaind[s,] = resul4$mu.coefficients
       seind[s,] = sqrt(diag(vcov(resul4))[1:3])
       betagam[s,] = resul5$coefficients
       segam[s,] = sqrt(diag(vcov(resul5)))
-      betaod[s,] = resul6$coef
-      seod[s,] = resul6$EP
+      betaod[s,] = resul6$coefficients
+      seod[s,] = resul6$robust.se
     }
 
 

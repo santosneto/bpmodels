@@ -5,9 +5,8 @@ Version: 0.1-1
 Date: 2019-09-18
 Author: Manoel Santos Neto [aut, cre]
 Maintainer: Manoel Santos Neto <mn.neco@gmail.com>
-Depends: R (>= 3.1.2), MASS, extraDistr
-LazyLoad: yes
-Imports:  Formula, LaplacesDemon, extraDistr, gamlss, ggplot2, matrixStats, matrixcalc, extraDistr, gee, Matrix, geepack, BSagri
+Depends: R (>= 3.1.0), Formula, LaplacesDemon, BSagri, matrixStats, gee, geepack, Matrix, gamlss, MASS, extraDistr, matrixcalc
+Imports: ggplot2  
 Description: Functions for fitting BP regression model
 License: GPL-2 | GPL-3
 Encoding: UTF-8
