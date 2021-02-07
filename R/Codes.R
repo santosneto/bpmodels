@@ -626,11 +626,13 @@ sim.gee.bp <- function(n=10,r=2,phi=2,REP=10,alpha=0.5)
     seod = matrix(0,REP,3)
 
     s = 0
-    set.seed(1317291619)
+    # create progress bar
+    p <- progress_estimated(REP)
     while(s < REP){
+      p$pause(0.1)$tick()$print()
       s = s + 1
       # index
-
+      set.seed(s*10)
       #
       ym = matrix(0,n,nt)
       for(k in 1:n){
@@ -659,7 +661,7 @@ sim.gee.bp <- function(n=10,r=2,phi=2,REP=10,alpha=0.5)
       resul1 = geeBP(y~cx+cw, data = original, id = idvec, corstr = "AR-1")
       resul2 = geeBP(y~cx+cw, data = original, id = idvec, corstr = "exchangeable")
       resul3 = geeBP(y~cx+cw, data = original, id = idvec, corstr = "unstructured")
-      resul4 = gamlss(y~cx+cw,family = BP(mu.link = "log"), trace = FALSE, method = CG())
+      resul4 = gamlss(y~cx+cw,family = BP(mu.link = "log"), trace = FALSE)
       if(Matcor == "AR-1"){
 
         resul5 =geeglm(y~cx+cw, id = idvec, data = original, corstr = "ar1", family = Gamma("log"))
@@ -669,6 +671,7 @@ sim.gee.bp <- function(n=10,r=2,phi=2,REP=10,alpha=0.5)
         resul5 = geeglm(y~cx+cw, id = idvec, data = original, corstr = "ex", family = Gamma("log"))
       }
       resul6 = try(geeBP(y~cx+cw, data = original, id = idvec, corstr = "one-dependent-stat"))
+      
       if(inherits(resul6, "try-error")){
 
         s = s - 1
@@ -687,6 +690,7 @@ sim.gee.bp <- function(n=10,r=2,phi=2,REP=10,alpha=0.5)
       betaod[s,] = resul6$coefficients
       seod[s,] = resul6$robust.se
     }
+   
 
 
     mtheta <- matrix(rep(theta,REP), REP, byrow = TRUE)
@@ -707,8 +711,8 @@ sim.gee.bp <- function(n=10,r=2,phi=2,REP=10,alpha=0.5)
     rsmeod <- sqrt(colMeans((betaod-mtheta)^2))
 
 
-    cat("Sampling unit size:",n,"\n")
-    cat("Number of replicates:",nt,"\n")
+    cat("Number of subjects/clusters:",n,"\n")
+    cat("Number of observations:",nt,"\n")
     cat("Correlation:",alfa,"\n")
     cat("Precision:",phin,"\n")
     cat("Type of correlation matrices:",Matcor,"\n")
