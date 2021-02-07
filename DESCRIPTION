@@ -1,8 +1,8 @@
 Package: simbp
 Type: Package
 Title: Beta Prime regression models
-Version: 0.1-1
-Date: 2019-09-18
+Version: 1.1-1
+Date: 2021-02-7
 Author: Manoel Santos Neto [aut, cre]
 Maintainer: Manoel Santos Neto <mn.neco@gmail.com>
 Depends: R (>= 3.1.0), Formula, LaplacesDemon, dplyr, BSagri, matrixStats, gee, geepack, Matrix, gamlss, MASS, extraDistr, matrixcalc
