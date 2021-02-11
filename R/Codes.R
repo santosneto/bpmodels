@@ -247,7 +247,7 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepen
     if(linkmu == "log"){
       G = diag(as.vector(mu)) # G para a ligação logarítimica
     } else{
-      G = diag(1,N,N) # G para a ligação logarítimica
+      G = diag(1,N,N) # G para a ligação identidade
     }
     A = diag(as.vector(vmus))
     Lambda = (phi+1)*G%*%A
@@ -310,6 +310,7 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepen
       # Matriz de correlação Uniforme
       Rm = as.matrix(bdiag(R))
       R = R[[1]]
+      
     } else if(corstr == "one-dependent"){
       alpha = 0
       den = 0
