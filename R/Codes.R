@@ -75,6 +75,7 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepen
     
     uc = split(u,id)
     scomb = matrix(u,n,nr[1],byrow = TRUE)
+    
     if(corstr == "unstructured"){
     
       R <- sapply(1:nr[1] ,function(j){
@@ -84,10 +85,9 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepen
           den1 <- sqrt(sum(scomb[,j]^2))
           den2 <- sqrt(sum(scomb[,l]^2))
           r <- num/(den1*den2)
-        }
-        )
-      }
-      ) %>% unlist 
+        })
+      } ) %>% unlist 
+      
       Rm <- kronecker(diag(n),R)
       
       
@@ -101,7 +101,7 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepen
           cden1 <- cden1 + (uc[[i]][j]^2)
           cden2 <- cden2 + (uc[[i]][j + 1]^2) 
         })
-      }) %>% alpha0()
+      })[[n]] %>% alpha0()
       
   
       Rm = matrix(0,N,N)
