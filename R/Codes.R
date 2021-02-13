@@ -3,7 +3,7 @@
 #'
 #'
 #'@export
-geeBP = function(formula, data, id, tol = 0.001, maxiter = 1000, corstr = "independence", linkmu = "log", print=FALSE){
+geeBP = function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "independence", linkmu = "log", print=FALSE){
   
   namescor = c("independence", "unstructured", "exchangeable", "AR-1", "one-dependent",
                "one-dependent-stat","two-dependent","two-dependent-stat")
@@ -96,26 +96,24 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 1000, corstr = "indep
       
       cnum = cden1 = cden2 = 0
       alpha <- sapply(1:n, function(i){
-        sapply(1:(nr[i]-1), function(j){ 
-          cnum <- cnum + uc[[i]][j]*uc[[i]][j+1]
+        sapply(1:(nr[i] - 1), function(j){ 
+          cnum <- cnum + uc[[i]][j]*uc[[i]][j + 1]
           cden1 <- cden1 + (uc[[i]][j]^2)
-          cden2 <- cden2 + (uc[[i]][j+1]^2) 
+          cden2 <- cden2 + (uc[[i]][j + 1]^2) 
         })
       }) %>% alpha0()
       
   
       Rm = matrix(0,N,N)
       diag(Rm) = 1
-      R = list(NULL)
       
-      for(i in 1:n){
-        R[[i]] = matrix(0,nr[i],nr[i])
-        for(j in 1:nr[i]){
-          for(l in 1:nr[i]){
-            R[[i]][j,l] = alpha^(abs(j-l))
-          }
-        }
-      }
+      R <- sapply(1:n, function(i){
+        sapply(1:nr[i], function(j){
+          sapply(1:nr[i], function(l){
+            alpha^(abs(j-l)) 
+          })
+        })
+      },simplify = FALSE)
       
       # Matriz de correlação AR-1
       Rm = as.matrix(bdiag(R))
