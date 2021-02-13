@@ -9,7 +9,7 @@ geeBP(
   data,
   id,
   tol = 0.001,
-  maxiter = 25,
+  maxiter = 1000,
   corstr = "independence",
   linkmu = "log",
   print = FALSE
