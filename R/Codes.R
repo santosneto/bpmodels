@@ -7,10 +7,10 @@
 #'@importFrom gamlss gamlss
 #'@importFrom BPmodel BP
 #'@importFrom Matrix bdiag
-#'@importFrom dplyr %>%
 #'
 #'@export
-geeBP <- function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "independence", linkmu = "log", print=FALSE){
+geeBP = function(formula, data, id, tol = 0.001, maxiter = 25,
+                 corstr = "independence", linkmu = "log"){
   
   namescor = c("independence", "unstructured", "exchangeable", "AR-1", "one-dependent",
                "one-dependent-stat","two-dependent","two-dependent-stat")
@@ -21,39 +21,65 @@ geeBP <- function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepe
   if(all(nameslink != linkmu)){
     stop("the link function is not defined")
   }
-  
   formula = as.formula(formula)
+  nformula = all.vars(formula)
+  fnames = 0
+  jaux = 1
+  listaux = list(NULL)
+  for(i in 1:length(nformula)){
+    if(is.factor(data[,nformula[i]])){
+      fnames[jaux] = nformula[i]
+      listaux[[jaux]] = "contr.sum"
+      jaux = jaux+1
+    }
+  }
   call <- match.call()
-  X = as.matrix(model.matrix(formula, data = data)) # Matriz de especificação
-  p = ncol(X) # Número de parâmetros
-  y = model.frame(formula, data = data)[,1] # Variável resposta
-  nr = table(id) # Número de repetições
-  n = max(id) # Número de unidades experimentais
-  N = nrow(X)
-  
-  if(linkmu == "log"){
-    mod0 = gamlss(formula,family = BP(mu.link = "log"), trace = FALSE, data = data)
+  if(jaux>1){
+    names(listaux) = fnames
+    X = as.matrix(model.matrix(formula, data = data, contrasts = listaux)) # Matriz de especificação
   }
   else{
-    mod0 = gamlss(formula,family = BP(mu.link = "identity"), trace = FALSE, data = data)
+    X = as.matrix(model.matrix(formula, data = data)) # Matriz de especificação
   }
-  
+  p = ncol(X) # Número de parâmetros
+  y = model.frame(formula, data = data)[,1] # Variável resposta
+  t = as.vector(table(id)) # Número de repetições
+  n = length(table(id)) # Número de unidades experimentais
+  N = nrow(X)
+  if(linkmu == "log"){
+    if(jaux>1){
+      mod0 = gamlss(formula,family = BP(mu.link = "log"), trace = FALSE, data = data, contrasts = listaux)
+    }
+    else{
+      mod0 = gamlss(formula,family = BP(mu.link = "log"), trace = FALSE, data = data)
+    }
+  }
+  if(linkmu == "identity"){
+    if(jaux>1){
+      mod0 = gamlss(formula,family = BP(mu.link = "log"), trace = FALSE, data = data, contrasts = listaux)
+    }
+    else{
+      mod0 = gamlss(formula,family = BP(mu.link = "log"), trace = FALSE, data = data)
+    }
+  }
   if(corstr == "independence"){
     cat("a gamlss object was returned")
     return(mod0)
   }
-  
   beta = mod0$mu.coefficients # Chute inicial para beta
-  phi = max(0.5,mod0$sigma.coefficients) # Chute inicial para phi
+  phi = mod0$sigma.coefficients # Chute inicial para phi
+  if(phi<0){
+    phi = 1
+  }
   
   # Modelo sob suposição de dependência
   cont = 1
   repeat{
-    
     eta = X%*%beta
     if(linkmu == "log"){
       mu = as.vector(exp(eta)) # mi para a ligação logarítmica
-    } else{
+    }
+    if(linkmu == "identity"){
       mu = as.vector(eta) # mi para a ligação logarítmica
     }
     # Cálculo da função de variância
@@ -69,81 +95,79 @@ geeBP <- function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepe
     vmus = trigamma(mu*(phi+1))-trigamma(mu*(phi+1)+phi+2)
     
     # Vetor b_i
-    u = ys - mus
+    u = ys-mus
     
     #Matrizes utilizadas para o cálculo da equação de estimação
     if(linkmu == "log"){
       G = diag(as.vector(mu)) # G para a ligação logarítimica
-    } else{
-      G = diag(1,N,N) # G para a ligação identidade
+    }
+    if(linkmu == "identity"){
+      G = diag(1,N,N) # G para a ligação logarítimica
     }
     A = diag(as.vector(vmus))
     Lambda = (phi+1)*G%*%A
     
-    uc <- split(u,id)
-    print(uc)
-    scomb <- matrix(u,n,nr[1],byrow = TRUE)
-    
+    uc = split(u,id)
+    scomb = matrix(u,n,t[1],byrow = TRUE)
     if(corstr == "unstructured"){
-    
-      R <- sapply(1:nr[1] ,function(j){
-          sapply(1:nr[1],function(l){
-          r <- sum(scomb[,j]*scomb[,l])/(sqrt(sum(scomb[,j]^2))*sqrt(sum(scomb[,l]^2)))
-        })
-      } )
-      print(R)
-      Rm <- kronecker(diag(n),R)
-      
-      
-    } else if(corstr == "AR-1"){
-      
-    #  alpha0 <- function(v){return(v[1]/sqrt(v[2]*v[3]))}
-    #  cnum <- 0
-    #  cden1 <- 0  
-    #  cden2 <- 0
-     # alpha <- sapply(1:n, function(i){
-    #    sapply(1:(nr[i] - 1), function(j){ 
-     #     cnum <- cnum + uc[[i]][j]*uc[[i]][j + 1]
-    #      cden1 <- cden1 + (uc[[i]][j]^2)
-    #      cden2 <- cden2 + (uc[[i]][j + 1]^2) 
-     #   })
-    #  })[[n]] %>% alpha0()
+      Rg = matrix(0,max(t),max(t))
+      cnum = den1 = den2 = 0
+      for(j in 1:(max(t))){
+        for(k in j:(max(t))){
+          for(i in 1:n){
+            if(is.na(uc[[i]][j])||is.na(uc[[i]][k])){
+              cnum = cnum
+              den1 = den1
+              den2 = den2
+            }
+            else{
+              cnum = cnum + (uc[[i]][j])*(uc[[i]][k])
+              den1 = den1 + (uc[[i]][j])^2
+              den2 = den2 + (uc[[i]][k])^2
+            }
+          }
+          Rg[j,k] = cnum/(sqrt(den1)*sqrt(den2))
+          Rg[k,j] = Rg[j,k]
+        }
+      }
+      diag(Rg) = 1
+      R = list(NULL)
+      for(i in 1:n){
+        R[[i]] = Rg[1:t[i],1:t[i]]
+      }
+      Rm = bdiag(R)
+    }
+    if(corstr == "AR-1"){
       cnum = cden1 = cden2 = 0
       for(i in 1:n){
-        for(j in 1:(nr[i]-1)){
+        for(j in 1:(t[i]-1)){
           cnum = cnum + uc[[i]][j]*uc[[i]][j+1]
           cden1 = cden1 + (uc[[i]][j]^2)
           cden2 = cden2 + (uc[[i]][j+1]^2)
         }
       }
-      alpha = cnum/sqrt(cden1*cden2) 
-      print(alpha)
-  
+      alpha = cnum/sqrt(cden1*cden2)
       Rm = matrix(0,N,N)
       diag(Rm) = 1
-      
-      R <- sapply(1:n, function(i){
-        sapply(1:nr[i], function(j){
-          sapply(1:nr[i], function(l){
-            alpha^(abs(j-l)) 
-          })
-        })
-      },simplify = FALSE)
-      
+      R = list(NULL)
+      for(i in 1:n){
+        R[[i]] = matrix(0,t[i],t[i])
+        for(j in 1:t[i]){
+          for(l in 1:t[i]){
+            R[[i]][j,l] = alpha^(abs(j-l))
+          }
+        }
+      }
       # Matriz de correlação AR-1
       Rm = as.matrix(bdiag(R))
-      R = R[[1]]
-      
-      print(R)
-      
-      
-      
-    } else if(corstr == "exchangeable"){
+      R=R[[1]]
+    }
+    if(corstr == "exchangeable"){
       cnum = cden = 0
       for(i in 1:n){
         aux = uc[[i]]%*%t(uc[[i]])
-        cnum = cnum + sum(aux[upper.tri(aux)])*(2/(nr[i]-1))
-        for(j in 1:(nr[i])){
+        cnum = cnum + sum(aux[upper.tri(aux)])*(2/(t[i]-1))
+        for(j in 1:(t[i])){
           cden = cden + (uc[[i]][j]^2)
         }
       }
@@ -151,23 +175,22 @@ geeBP <- function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepe
       Rm = matrix(0,N,N)
       R = list(NULL)
       for(i in 1:n){
-        R[[i]] = matrix(alpha,nr[i],nr[i])
+        R[[i]] = matrix(alpha,t[i],t[i])
         diag(R[[i]]) = 1
       }
       # Matriz de correlação Uniforme
       Rm = as.matrix(bdiag(R))
-      R = R[[1]]
-      
-    } else if(corstr == "one-dependent"){
+      R=R[[1]]
+    }
+    if(corstr == "one-dependent"){
       alpha = 0
       den = 0
       for(i in 1:n){
-        for(j in 1:nr[1]){
+        for(j in 1:t[1]){
           den = den + (scomb[i,j]^2)
         }
       }
-      
-      for(j in 1:(nr[1]-1)){
+      for(j in 1:(t[1]-1)){
         num = 0
         for(i in 1:n){
           num = num + (scomb[i,j]*scomb[i,j+1])
@@ -175,14 +198,12 @@ geeBP <- function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepe
         alpha[j] = num/den
       }
       alpha = (N/n)*alpha
-      
       Rm = matrix(0,N,N)
       diag(Rm) = 1
-      
-      R = matrix(0,nr[1],nr[1])
-      for(i in 1:nr[1]){
-        for(j in 1:nr[1]){
-          if(j == (i+1)){
+      R = matrix(0,t[1],t[1])
+      for(i in 1:t[1]){
+        for(j in 1:t[1]){
+          if(j==(i+1)){
             R[i,j] = alpha[i]
             R[j,i] = R[i,j]
           }
@@ -190,25 +211,25 @@ geeBP <- function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepe
       }
       diag(R) = 1
       Rm = kronecker(diag(n),R)
-    } else if(corstr == "two-dependent"){
+    }
+    if(corstr == "two-dependent"){
       alpha1 = 0
       den = 0
       for(i in 1:n){
-        for(j in 1:nr[1]){
+        for(j in 1:t[1]){
           den = den + (scomb[i,j]^2)
         }
       }
-      for(j in 1:(nr[1]-1)){
+      for(j in 1:(t[1]-1)){
         num = 0
         for(i in 1:n){
           num = num + (scomb[i,j]*scomb[i,j+1])
         }
         alpha1[j] = num/den
       }
-      
       alpha1 = (N/n)*alpha1
       alpha2 = 0
-      for(j in 1:(nr[1]-2)){
+      for(j in 1:(t[1]-2)){
         num = 0
         for(i in 1:n){
           num = num + (scomb[i,j]*scomb[i,j+2])
@@ -218,9 +239,9 @@ geeBP <- function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepe
       alpha2 = (N/n)*alpha2
       Rm = matrix(0,N,N)
       diag(Rm) = 1
-      R = matrix(0,nr[1],nr[1])
-      for(i in 1:nr[1]){
-        for(j in 1:nr[1]){
+      R = matrix(0,t[1],t[1])
+      for(i in 1:t[1]){
+        for(j in 1:t[1]){
           if(j==(i+1)){
             R[i,j] = alpha1[i]
             R[j,i] = R[i,j]
@@ -233,15 +254,16 @@ geeBP <- function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepe
       }
       diag(R) = 1
       Rm = kronecker(diag(n),R)
-    } else if(corstr == "one-dependent-stat"){
+    }
+    if(corstr == "one-dependent-stat"){
       alpha = 0
       den = 0
       for(i in 1:n){
-        for(j in 1:nr[1]){
+        for(j in 1:t[1]){
           den = den + (scomb[i,j]^2)
         }
       }
-      for(j in 1:(nr[1]-1)){
+      for(j in 1:(t[1]-1)){
         num = 0
         for(i in 1:n){
           num = num + (scomb[i,j]*scomb[i,j+1])
@@ -251,26 +273,27 @@ geeBP <- function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepe
       alpha = (N/n)*alpha
       Rm = matrix(0,N,N)
       diag(Rm) = 1
-      R = matrix(0,nr[1],nr[1])
-      for(i in 1:nr[1]){
-        for(j in 1:nr[1]){
-          if(j == (i+1)){
-            R[i,j] = sum(alpha)/(nr[1]-1)
+      R = matrix(0,t[1],t[1])
+      for(i in 1:t[1]){
+        for(j in 1:t[1]){
+          if(j==(i+1)){
+            R[i,j] = sum(alpha)/(t[1]-1)
             R[j,i] = R[i,j]
           }
         }
       }
       diag(R) = 1
       Rm = kronecker(diag(n),R)
-    } else{
+    }
+    if(corstr == "two-dependent-stat"){
       alpha1 = 0
       den = 0
       for(i in 1:n){
-        for(j in 1:nr[1]){
+        for(j in 1:t[1]){
           den = den + (scomb[i,j]^2)
         }
       }
-      for(j in 1:(nr[1]-1)){
+      for(j in 1:(t[1]-1)){
         num = 0
         for(i in 1:n){
           num = num + (scomb[i,j]*scomb[i,j+1])
@@ -278,9 +301,8 @@ geeBP <- function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepe
         alpha1[j] = num/den
       }
       alpha1 = (N/n)*alpha1
-      
       alpha2 = 0
-      for(j in 1:(nr[1]-2)){
+      for(j in 1:(t[1]-2)){
         num = 0
         for(i in 1:n){
           num = num + (scomb[i,j]*scomb[i,j+2])
@@ -290,16 +312,15 @@ geeBP <- function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepe
       alpha2 = (N/n)*alpha2
       Rm = matrix(0,N,N)
       diag(Rm) = 1
-      
-      R = matrix(0,nr[1],nr[1])
-      for(i in 1:nr[1]){
-        for(j in 1:nr[1]){
-          if(j == (i+1)){
-            R[i,j] = sum(alpha1)/(nr[1]-1)
+      R = matrix(0,t[1],t[1])
+      for(i in 1:t[1]){
+        for(j in 1:t[1]){
+          if(j==(i+1)){
+            R[i,j] = sum(alpha1)/(t[1]-1)
             R[j,i] = R[i,j]
           }
           if(j == (i+2)){
-            R[i,j] = sum(alpha2)/(nr[1]-1)
+            R[i,j] = sum(alpha2)/(t[1]-1)
             R[j,i] = R[i,j]
           }
         }
@@ -307,29 +328,24 @@ geeBP <- function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepe
       diag(R) = 1
       Rm = kronecker(diag(n),R)
     }
-    
-    Omega = sqrt(A)%*%Rm%*%sqrt(A)
-    W = Lambda%*%solve(Omega)%*%Lambda
+    Omega = as.matrix(sqrt(A)%*%Rm%*%sqrt(A))
+    W = Lambda%*%solve(Omega)%*%t(Lambda)
     z = eta + solve(Lambda)%*%u
     
     #Novo valor de beta
     beta1 = solve(t(X)%*%W%*%X)%*%(t(X)%*%W%*%z)
-    
     # Verificar se convergiu: beta1 é aproximadamente beta
     dif = abs(beta1-beta)
-    print(dif)
-    print(tol*p)
-    
-    if(sum(dif) <= (tol*p)){
+    if(sum(dif)<=(tol*p)){
       beta = beta1
-      if(print == TRUE) cat("The algorithm converged")
+      cat("The algorithm converged")
       converg = 1
       break
     }
     
     # Se não convergir em 50 iterações o algoritmo para
     if(cont == maxiter){
-      if(print == TRUE) cat("Maximum number of iterations reached")
+      cat("Maximum number of iterations reached")
       converg = 0
       break
     }
@@ -365,7 +381,7 @@ geeBP <- function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepe
   fit$call <- call
   fit$formula <- formula
   fit$nclusters = n
-  fit$clusters = nr
+  fit$clusters = t
   fit$nobs <- N
   fit$iterations <- cont
   fit$coefficients <- beta
@@ -377,7 +393,7 @@ geeBP <- function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepe
   fit$family <- "Beta prime"
   fit$y <- as.vector(y)
   fit$id <- as.vector(id)
-  fit$max.id <- max(nr)
+  fit$max.id <- max(t)
   fit$working.correlation <- R
   fit$scale <- phi
   fit$robust.variance <- VarBeta
@@ -410,7 +426,7 @@ geeBP <- function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepe
   fit$comp$Rm = Rm
   fit$comp$Omega = Omega
   # QIC
-  Q = (1/phi)*(y*(log(mu)-log(y))+(y-1)*(log(1+mu)-log(1+y)))
+  Q = phi*(y*(log(mu)-log(y))-(y+1)*(log(1+mu)-log(1+y)))
   psiq = sum(Q)
   VI = A
   oi = t(X)%*%Lambda%*%solve(VI)%*%Lambda%*%X
@@ -418,13 +434,9 @@ geeBP <- function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepe
   CIC = sum(diag(oi%*%VarBeta))
   fit$QIC = QIC
   fit$CIC = CIC
-  devi = -2*phi*Q
+  devi = -2*(1/phi)*Q
   D = sum(devi)
   phia = D/n
-  fit$EQIC = (1/phia)*D + sum(log(2*pi*phia*(diag(A)+1/6))) + 2*CIC
+  fit$EQIC = (phi)*D + sum(log(2*pi*(1/phi)*(diag(A)+1/6))) + 2*CIC
   return(fit)
 }
-
-
-
-

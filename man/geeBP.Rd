@@ -11,8 +11,7 @@ geeBP(
   tol = 0.001,
   maxiter = 25,
   corstr = "independence",
-  linkmu = "log",
-  print = FALSE
+  linkmu = "log"
 )
 }
 \description{
