@@ -92,16 +92,18 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 1000, corstr = "indep
       
       
     } else if(corstr == "AR-1"){
+      alpha0 <- function(v){return(v[1]/sqrt(v[2]*v[3]))}
+      
       cnum = cden1 = cden2 = 0
-      sapply(1:n, function(i){
+      alpha <- sapply(1:n, function(i){
         sapply(1:(nr[i]-1), function(j){ 
           cnum <- cnum + uc[[i]][j]*uc[[i]][j+1]
           cden1 <- cden1 + (uc[[i]][j]^2)
           cden2 <- cden2 + (uc[[i]][j+1]^2) 
         })
-      })
+      }) %>% alpha0()
       
-      alpha = cnum/sqrt(cden1*cden2)
+  
       Rm = matrix(0,N,N)
       diag(Rm) = 1
       R = list(NULL)
