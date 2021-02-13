@@ -81,7 +81,6 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 1000, corstr = "indep
       diag(R) <- 1
       a <- sapply(1:nr[1] ,function(j){
         l <- j:nr[1]
-        scomb = matrix(1:(n*nr),n,nr,byrow = TRUE)
         out <- sapply(l,function(l){
           num <- sum(scomb[,j]*scomb[,l])
           den1 <- sqrt(sum(scomb[,j]^2))
@@ -91,9 +90,9 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 1000, corstr = "indep
         )
       }
       ) %>% unlist 
-      R[upper.tri(R, diag = FALSE)] <- a[a < 0.99999999]
+      
+      R[base::upper.tri(R, diag = FALSE)] <- a[a < 0.99999999]
       R <- Matrix::forceSymmetric(R)
-      print(R)
       Rm <- kronecker(diag(n),R)
       
       
@@ -118,9 +117,12 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 1000, corstr = "indep
           }
         }
       }
+      
       # Matriz de correlação AR-1
       Rm = as.matrix(bdiag(R))
-      R=R[[1]]
+      R = R[[1]]
+      
+      
     } else if(corstr == "exchangeable"){
       cnum = cden = 0
       for(i in 1:n){
