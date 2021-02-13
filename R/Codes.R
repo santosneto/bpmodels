@@ -1,6 +1,13 @@
 #' GEE BP
 #'
 #'
+#'@importFrom stats as.formula
+#'@importFrom stats model.matrix
+#'@importFrom stats model.frame
+#'@importFrom gamlss gamlss
+#'@importFrom BPmodel BP
+#'@importFrom Matrix bdiag
+#'@importFrom dplyr %>%
 #'
 #'@export
 geeBP <- function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "independence", linkmu = "log", print=FALSE){
@@ -62,7 +69,7 @@ geeBP <- function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepe
     vmus = trigamma(mu*(phi+1))-trigamma(mu*(phi+1)+phi+2)
     
     # Vetor b_i
-    u = ys-mus
+    u = ys - mus
     
     #Matrizes utilizadas para o cálculo da equação de estimação
     if(linkmu == "log"){
@@ -73,9 +80,9 @@ geeBP <- function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepe
     A = diag(as.vector(vmus))
     Lambda = (phi+1)*G%*%A
     
-    uc = split(u,id)
+    uc <- split(u,id)
     print(uc)
-    scomb = matrix(u,n,nr[1],byrow = TRUE)
+    scomb <- matrix(u,n,nr[1],byrow = TRUE)
     
     if(corstr == "unstructured"){
     
