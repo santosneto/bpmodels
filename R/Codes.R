@@ -3,7 +3,7 @@
 #'
 #'
 #'@export
-geeBP = function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "independence", linkmu = "log", print=FALSE){
+geeBP <- function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "independence", linkmu = "log", print=FALSE){
   
   namescor = c("independence", "unstructured", "exchangeable", "AR-1", "one-dependent",
                "one-dependent-stat","two-dependent","two-dependent-stat")
@@ -93,8 +93,9 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepen
       
     } else if(corstr == "AR-1"){
       alpha0 <- function(v){return(v[1]/sqrt(v[2]*v[3]))}
-      
-      cnum = cden1 = cden2 = 0
+      cnum <- 0
+      cden1 <- 0  
+      cden2 <- 0
       alpha <- sapply(1:n, function(i){
         sapply(1:(nr[i] - 1), function(j){ 
           cnum <- cnum + uc[[i]][j]*uc[[i]][j + 1]
@@ -103,6 +104,7 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepen
         })
       })[[n]] %>% alpha0()
       
+      print(alpha)
   
       Rm = matrix(0,N,N)
       diag(Rm) = 1
@@ -119,6 +121,7 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepen
       Rm = as.matrix(bdiag(R))
       R = R[[1]]
       
+      print(R)
       
     } else if(corstr == "exchangeable"){
       cnum = cden = 0
@@ -299,6 +302,9 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepen
     
     # Verificar se convergiu: beta1 é aproximadamente beta
     dif = abs(beta1-beta)
+    print(dif)
+    print(tol*p)
+    
     if(sum(dif) <= (tol*p)){
       beta = beta1
       if(print == TRUE) cat("The algorithm converged")
