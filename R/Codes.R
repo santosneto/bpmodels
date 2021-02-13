@@ -97,18 +97,26 @@ geeBP <- function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepe
       
     } else if(corstr == "AR-1"){
       
-      alpha0 <- function(v){return(v[1]/sqrt(v[2]*v[3]))}
-      cnum <- 0
-      cden1 <- 0  
-      cden2 <- 0
-      alpha <- sapply(1:n, function(i){
-        sapply(1:(nr[i] - 1), function(j){ 
-          cnum <- cnum + uc[[i]][j]*uc[[i]][j + 1]
-          cden1 <- cden1 + (uc[[i]][j]^2)
-          cden2 <- cden2 + (uc[[i]][j + 1]^2) 
-        })
-      })[[n]] %>% alpha0()
-      
+    #  alpha0 <- function(v){return(v[1]/sqrt(v[2]*v[3]))}
+    #  cnum <- 0
+    #  cden1 <- 0  
+    #  cden2 <- 0
+     # alpha <- sapply(1:n, function(i){
+    #    sapply(1:(nr[i] - 1), function(j){ 
+     #     cnum <- cnum + uc[[i]][j]*uc[[i]][j + 1]
+    #      cden1 <- cden1 + (uc[[i]][j]^2)
+    #      cden2 <- cden2 + (uc[[i]][j + 1]^2) 
+     #   })
+    #  })[[n]] %>% alpha0()
+      cnum = cden1 = cden2 = 0
+      for(i in 1:n){
+        for(j in 1:(nr[i]-1)){
+          cnum = cnum + uc[[i]][j]*uc[[i]][j+1]
+          cden1 = cden1 + (uc[[i]][j]^2)
+          cden2 = cden2 + (uc[[i]][j+1]^2)
+        }
+      }
+      alpha = cnum/sqrt(cden1*cden2) 
       print(alpha)
   
       Rm = matrix(0,N,N)
@@ -127,6 +135,8 @@ geeBP <- function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepe
       R = R[[1]]
       
       print(R)
+      
+      
       
     } else if(corstr == "exchangeable"){
       cnum = cden = 0
