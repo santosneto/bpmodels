@@ -88,23 +88,24 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 1000, corstr = "indep
         )
       }
       ) %>% unlist 
-      print(R)
       Rm <- kronecker(diag(n),R)
       
       
     } else if(corstr == "AR-1"){
       cnum = cden1 = cden2 = 0
-      for(i in 1:n){
-        for(j in 1:(nr[i]-1)){
-          cnum = cnum + uc[[i]][j]*uc[[i]][j+1]
-          cden1 = cden1 + (uc[[i]][j]^2)
-          cden2 = cden2 + (uc[[i]][j+1]^2)
-        }
-      }
+      sapply(1:n, function(i){
+        sapply(1:(nr-1), function(j){ 
+          cnum <- cnum + uc[[i]][j]*uc[[i]][j+1]
+          cden1 <- cden1 + (uc[[i]][j]^2)
+          cden2 <- cden2 + (uc[[i]][j+1]^2) 
+        })
+      })
+      
       alpha = cnum/sqrt(cden1*cden2)
       Rm = matrix(0,N,N)
       diag(Rm) = 1
       R = list(NULL)
+      
       for(i in 1:n){
         R[[i]] = matrix(0,nr[i],nr[i])
         for(j in 1:nr[i]){
