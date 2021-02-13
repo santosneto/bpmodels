@@ -91,7 +91,7 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 1000, corstr = "indep
       }
       ) %>% unlist 
       
-      R[base::upper.tri(R, diag = FALSE)] <- a[a < 0.99999999]
+      R[base::upper.tri(R, diag = FALSE)] <- a[a!=1.0]
       R <- Matrix::forceSymmetric(R)
       Rm <- kronecker(diag(n),R)
       
