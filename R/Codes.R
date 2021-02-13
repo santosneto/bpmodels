@@ -74,24 +74,22 @@ geeBP <- function(formula, data, id, tol = 0.001, maxiter = 25, corstr = "indepe
     Lambda = (phi+1)*G%*%A
     
     uc = split(u,id)
+    print(uc)
     scomb = matrix(u,n,nr[1],byrow = TRUE)
     
     if(corstr == "unstructured"){
     
       R <- sapply(1:nr[1] ,function(j){
-        l <- 1:nr[1]
-        out <- sapply(l,function(l){
-          num <- sum(scomb[,j]*scomb[,l])
-          den1 <- sqrt(sum(scomb[,j]^2))
-          den2 <- sqrt(sum(scomb[,l]^2))
-          r <- num/(den1*den2)
+          sapply(1:nr[1],function(l){
+          r <- sum(scomb[,j]*scomb[,l])/(sqrt(sum(scomb[,j]^2))*sqrt(sum(scomb[,l]^2)))
         })
-      } ) %>% unlist 
-      
+      } )
+      print(R)
       Rm <- kronecker(diag(n),R)
       
       
     } else if(corstr == "AR-1"){
+      
       alpha0 <- function(v){return(v[1]/sqrt(v[2]*v[3]))}
       cnum <- 0
       cden1 <- 0  
