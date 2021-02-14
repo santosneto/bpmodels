@@ -338,7 +338,7 @@ geeBP = function(formula, data, id, tol = 0.001, maxiter = 25,
     dif = abs(beta1-beta)
     if(sum(dif)<=(tol*p)){
       beta = beta1
-      cat("The algorithm converged")
+      #cat("The algorithm converged")
       converg = 1
       break
     }

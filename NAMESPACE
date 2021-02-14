@@ -3,7 +3,6 @@
 export(geeBP)
 importFrom(BPmodel,BP)
 importFrom(Matrix,bdiag)
-importFrom(dplyr,"%>%")
 importFrom(gamlss,gamlss)
 importFrom(stats,as.formula)
 importFrom(stats,model.frame)
